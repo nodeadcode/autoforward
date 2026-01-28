@@ -2,7 +2,8 @@ from aiogram import Router, types, F
 from aiogram.filters import Command
 from config.settings import OWNER_ID
 from database.db import AsyncSessionLocal
-from database.models import User
+from database.models import User, MessageLog, Group, RedeemCode
+from sqlalchemy import func
 from sqlalchemy.future import select
 from datetime import datetime, timedelta
 import asyncio
@@ -79,3 +80,70 @@ async def cmd_broadcast(message: types.Message):
                 pass
 
     await msg.edit_text(f"✅ **Broadcast Completed**\n\nTotal Users: {len(user_ids)}\n✅ Successfully Sent: {sent}\n❌ Failed/Blocked: {failed}")
+
+@router.message(Command("stats"))
+async def cmd_stats(message: types.Message):
+    if not is_owner(message.from_user.id):
+        return
+
+    async with AsyncSessionLocal() as db:
+        # User Stats
+        user_count = (await db.execute(select(func.count(User.id)))).scalar()
+        
+        # Group Stats
+        group_count = (await db.execute(select(func.count(Group.id)))).scalar()
+        active_groups = (await db.execute(select(func.count(Group.id)).where(Group.is_enabled == True))).scalar()
+
+        # Message Stats (Last 24h)
+        last_24h = datetime.utcnow() - timedelta(hours=24)
+        msgs_24h = (await db.execute(select(func.count(MessageLog.id)).where(MessageLog.sent_at >= last_24h))).scalar()
+        success_24h = (await db.execute(select(func.count(MessageLog.id)).where(MessageLog.sent_at >= last_24h, MessageLog.status == "success"))).scalar()
+        
+        # Total Success
+        total_success = (await db.execute(select(func.count(MessageLog.id)).where(MessageLog.status == "success"))).scalar()
+
+    stats_text = (
+        "❉ **SYSTEM STATISTICS** ❉\n"
+        "━━━━━━━━━━━━━━━━━━━━\n"
+        f"◈ **Total Users**: `{user_count}`\n"
+        f"◈ **Total Groups**: `{group_count}` (`{active_groups}` active)\n"
+        f"◈ **Total Success**: `{total_success}`\n"
+        "━━━━━━━━━━━━━━━━━━━━\n"
+        "📊 **Last 24 Hours**:\n"
+        f"◈ **Total Attempts**: `{msgs_24h}`\n"
+        f"◈ **Successful**: `{success_24h}`\n"
+        "━━━━━━━━━━━━━━━━━━━━"
+    )
+    await message.answer(stats_text)
+
+@router.message(Command("gencode"))
+async def cmd_gencode(message: types.Message):
+    """Usage: /gencode <days> <amount>"""
+    if not is_owner(message.from_user.id):
+        return
+
+    args = message.text.split()
+    if len(args) < 3:
+        await message.answer("Usage: /gencode <days> <amount>")
+        return
+
+    try:
+        days = int(args[1])
+        amount = int(args[2])
+        
+        import secrets
+        import string
+        
+        codes = []
+        async with AsyncSessionLocal() as db:
+            for _ in range(amount):
+                code = "ADS-" + "".join(secrets.choice(string.ascii_uppercase + string.digits) for _ in range(8))
+                new_code = RedeemCode(code=code, duration_days=days)
+                db.add(new_code)
+                codes.append(code)
+            await db.commit()
+            
+        codes_str = "\n".join([f"`{c}`" for c in codes])
+        await message.answer(f"✅ **Generated {amount} codes ({days} days)**:\n\n{codes_str}")
+    except ValueError:
+        await message.answer("Invalid arguments. Both Days and Amount must be numbers.")

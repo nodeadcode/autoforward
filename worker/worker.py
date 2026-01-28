@@ -12,14 +12,17 @@ logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(level
 logger = logging.getLogger("Worker")
 
 def is_night_time():
-    now = datetime.now()
-    # Simple check for 00:00 to 06:00
-    # NIGHT_MODE_START = 0, NIGHT_MODE_END = 6
+    """Checks if current UTC time is within night mode hours."""
+    now = datetime.utcnow()
+    # NIGHT_MODE_START = 0 (12 AM), NIGHT_MODE_END = 6 (6 AM)
     return NIGHT_MODE_START <= now.hour < NIGHT_MODE_END
 
 async def worker_loop():
-    logger.info("Worker started.")
+    logger.info("🚀 Worker started.")
     await init_db()
+    
+    # Global Structured Logging
+    logging.getLogger("telethon").setLevel(logging.WARNING) # Mute telethon noise
 
     while True:
         try:

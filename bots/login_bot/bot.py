@@ -7,16 +7,23 @@ from bots.login_bot.handlers import start, api, phone, otp
 from database.db import init_db
 
 async def main():
-    # Setup Logging
+    # Setup Structured Logging
+    log_format = "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
     logging.basicConfig(
         level=logging.INFO,
-        format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+        format=log_format,
         handlers=[
-            logging.FileHandler("login_bot.log"),
+            logging.FileHandler("logs/login_bot.log"),
             logging.StreamHandler()
         ]
     )
-    logger = logging.getLogger(__name__)
+    logger = logging.getLogger("LoginBot")
+    logger.info("Starting Login Bot...")
+
+    # Ensure logs directory exists
+    import os
+    if not os.path.exists("logs"):
+        os.makedirs("logs")
     
     # Initialize Database
     await init_db()
@@ -30,13 +37,16 @@ async def main():
     dp.include_router(phone.router)
     dp.include_router(otp.router)
 
+    @dp.errors()
     async def global_error_handler(event: types.ErrorEvent):
-        logging.error(f"Global Login Bot Error: {event.exception}", exc_info=True)
-
-    dp.errors.register(global_error_handler)
+        logger.error(f"⚠️ GLOBAL LOGIN BOT ERROR: {event.exception}", exc_info=True)
+        return True # Handled
 
     await bot.delete_webhook(drop_pending_updates=True)
     await dp.start_polling(bot)
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    try:
+        asyncio.run(main())
+    except KeyboardInterrupt:
+        print("Bot stopped.")

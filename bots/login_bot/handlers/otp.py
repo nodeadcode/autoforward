@@ -8,6 +8,8 @@ from database.crud import get_or_create_user
 from database.models import Session
 from sqlalchemy.future import select
 from bots.login_bot.keyboards.inline import otp_keyboard
+from config.settings import BOT_TOKEN_MAIN
+from aiogram import Bot
 
 router = Router()
 
@@ -59,11 +61,25 @@ async def finish_login(message: types.Message, state: FSMContext, code: str, use
             
             await db.commit()
             
+        # Notify Main Bot
+        try:
+            main_bot = Bot(token=BOT_TOKEN_MAIN)
+            await main_bot.send_message(
+                user_id,
+                "✅ **LOGIN SUCCESSFUL**\n\n"
+                "Your account has been connected to Spinify Ads.\n"
+                "You can now manage your groups and scheduler in this bot."
+            )
+            await main_bot.session.close()
+        except Exception as e:
+            logger.error(f"Failed to notify main bot: {e}")
+
         await msg.edit_text(
             "❉ **LOGIN SUCCESSFUL** ❉\n"
             "━━━━━━━━━━━━━━━━━━━━\n"
             "◈ Account linked successfully.\n"
-            "◈ You can now close this bot.\n"
+            "◈ You can now close this bot and\n"
+            "◈ Go back to the **Main Bot**.\n"
             "━━━━━━━━━━━━━━━━━━━━"
         )
         await client.disconnect()

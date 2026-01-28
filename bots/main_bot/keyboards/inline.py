@@ -13,6 +13,7 @@ def main_menu_kb(user_id):
         InlineKeyboardButton(text="💎 MY PLAN", callback_data="plan"),
         InlineKeyboardButton(text="🎁 REDEEM CODE", callback_data="redeem")
     )
+    kb.row(InlineKeyboardButton(text="📖 USER GUIDE", callback_data="guide"))
     kb.row(InlineKeyboardButton(text="⚡ FORCE SYNC", callback_data="sync"))
     return kb.as_markup()
 

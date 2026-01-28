@@ -57,10 +57,37 @@ python -m worker.worker
 
 ## 📚 User Guide
 
-1.  **Start Main Bot**: Check your status and get a plan.
-2.  **Login**: Use the Login Bot to connect your Telegram account. You will need your **API ID** and **API Hash** from [my.telegram.org](https://my.telegram.org).
-3.  **Add Groups**: In the Main Bot, add the groups you want to send messages to.
-4.  **Schedule**: Post a message in your **Saved Messages**, and the bot will pick it up and forward it to your groups based on your interval.
+Follow these steps to get your automation running:
 
-## 👑 Admin Commands
--   `/gencode <days>`: Generate a redeem code (Owner only).
+### 1. Initial Setup
+- **Start Main Bot**: Send `/start` to your main bot.
+- **Get Trial**: You will automatically receive a 7-day trial.
+- **Login**: Use the **Login Bot** to link your Telegram account. Enter your `API ID` and `API Hash` from [my.telegram.org](https://my.telegram.org).
+
+### 2. Configure Groups
+- Open the **Main Bot** and click on **Manage Groups**.
+- Add the numeric ID or Username (e.g., `@groupname`) of the groups you want to message.
+- Ensure you have joined these groups with the account you connected.
+
+### 3. Setting Your Ad Message (SEQUENTIAL)
+The bot reads your **Saved Messages** chat in Telegram and rotates through them sequentially.
+
+1.  Open **Telegram**.
+2.  Go to the **Saved Messages** chat.
+3.  **Forward or Send multiple messages** that you want to use as ads.
+    -   The bot will fetch the last 50 messages and send them one by one, per interval.
+    -   **Cycle 1**: Sends Message #1 (oldest in the list).
+    -   **Cycle 2**: Sends Message #2.
+    -   ... and so on, looping back to Message #1 when the end is reached.
+4.  This allows you to have a "rotation" of different ads without manual intervention.
+
+### 4. Enable Scheduler
+- In the **Main Bot**, go to **Settings**.
+- Click **Resume Scheduler** to start the automatic sending cycle.
+- The worker will now check your Saved Messages and start sending to your groups based on your interval.
+
+## 👑 Owner Features
+-   `/gencode <days> <amount>`: Generate redeem codes for users.
+-   `/stats`: View global system analytics.
+-   `/broadcast <text>`: Send a message to all bot users.
+-   `/extend <user_id> <days>`: Manually extend a user's plan.

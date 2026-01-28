@@ -27,6 +27,8 @@ async def cmd_start(message: types.Message, state: FSMContext):
         f"Welcome to the most powerful scheduler.\n\n"
         f"◈ **Status**: {status_text}\n"
         f"━━━━━━━━━━━━━━━━━━━━\n"
+        f"⊹ **New?** Click `📖 USER GUIDE` to learn how to set your message.\n"
+        f"━━━━━━━━━━━━━━━━━━━━\n"
         f"Please select an option:",
         reply_markup=main_menu_kb(message.from_user.id)
     )
