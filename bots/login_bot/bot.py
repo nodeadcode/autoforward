@@ -1,6 +1,6 @@
 import asyncio
 import logging
-from aiogram import Bot, Dispatcher
+from aiogram import Bot, Dispatcher, types
 from aiogram.fsm.storage.memory import MemoryStorage
 from config.settings import BOT_TOKEN_LOGIN
 from bots.login_bot.handlers import start, api, phone, otp

@@ -1,7 +1,9 @@
 import asyncio
 import logging
-from aiogram import Bot, Dispatcher
+from aiogram import Bot, Dispatcher, types
 from aiogram.fsm.storage.memory import MemoryStorage
+from aiogram.client.default import DefaultBotProperties
+from aiogram.enums import ParseMode
 from config.settings import BOT_TOKEN_MAIN
 from bots.main_bot.handlers import start, menu, settings, groups, plans, redeem, account, owner
 from database.db import init_db
@@ -21,9 +23,6 @@ async def main():
     # Initialize Database (if strictly running this file)
     await init_db()
 
-from aiogram.client.default import DefaultBotProperties
-from aiogram.enums import ParseMode
-
     bot = Bot(token=BOT_TOKEN_MAIN, default=DefaultBotProperties(parse_mode=ParseMode.MARKDOWN))
     dp = Dispatcher(storage=MemoryStorage())
 
@@ -39,8 +38,6 @@ from aiogram.enums import ParseMode
 
     async def global_error_handler(event: types.ErrorEvent):
         logging.error(f"Global Error: {event.exception}", exc_info=True)
-        # Optionally notify admin
-        # await bot.send_message(OWNER_ID, f"⚠️ **Bot Error!**\n\n`{str(event.exception)[:1000]}`")
 
     dp.errors.register(global_error_handler)
 

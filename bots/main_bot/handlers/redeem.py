@@ -58,7 +58,14 @@ async def cmd_gencode(message: types.Message):
         return
     
     try:
-        days = int(args[1])
+        val = args[1].lower()
+        if val == "week":
+            days = 7
+        elif val == "month":
+            days = 30
+        else:
+            days = int(val)
+            
         code = f"SPINIFY-{str(uuid.uuid4())[:8].upper()}"
         
         async with AsyncSessionLocal() as db:
@@ -66,4 +73,4 @@ async def cmd_gencode(message: types.Message):
         
         await message.answer(f"✅ Code Generated:\n\n`{code}`\n\nDuration: {days} days")
     except ValueError:
-        await message.answer("Invalid number of days.")
+        await message.answer("Invalid duration. Use a number (days), 'week', or 'month'.")
