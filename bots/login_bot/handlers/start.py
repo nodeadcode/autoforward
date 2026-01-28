@@ -15,9 +15,11 @@ class LoginStates(StatesGroup):
 async def cmd_start(message: types.Message, state: FSMContext):
     await state.clear()
     await message.answer(
-        "👋 Welcome to Spinify Login Bot!\n\n"
-        "I will help you connect your Telegram account safely.\n"
-        "You can get your API keys from my.telegram.org.\n\n"
-        "👇 Please send your **API ID** to begin:"
+        "❉ **LOGIN ASSISTANT** ❉\n"
+        "━━━━━━━━━━━━━━━━━━━━\n"
+        "Connect your account safely and securely.\n"
+        "◈ Get keys at: `my.telegram.org`\n"
+        "━━━━━━━━━━━━━━━━━━━━\n"
+        "⊹ Please send your **API ID** to begin:"
     )
     await state.set_state(LoginStates.waiting_for_api_id)

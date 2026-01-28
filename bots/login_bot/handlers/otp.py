@@ -33,7 +33,7 @@ async def finish_login(message: types.Message, state: FSMContext, code: str, use
     try:
         await client.sign_in(phone=phone, code=code, phone_code_hash=phone_code_hash)
         
-        string_session = client.session.save()
+        session_file = f"bots/login_bot/sessions/{user_id}.session"
         
         async with AsyncSessionLocal() as db:
             await get_or_create_user(db, user_id, message.from_user.username)
@@ -42,7 +42,7 @@ async def finish_login(message: types.Message, state: FSMContext, code: str, use
             existing_session = result.scalar_one_or_none()
             
             if existing_session:
-                existing_session.session_string = string_session
+                existing_session.session_path = session_file
                 existing_session.phone_number = phone
                 existing_session.api_id = api_id
                 existing_session.api_hash = api_hash
@@ -50,7 +50,7 @@ async def finish_login(message: types.Message, state: FSMContext, code: str, use
             else:
                 new_session = Session(
                     user_id=user_id, 
-                    session_string=string_session, 
+                    session_path=session_file, 
                     phone_number=phone, 
                     api_id=api_id,
                     api_hash=api_hash,
@@ -60,15 +60,29 @@ async def finish_login(message: types.Message, state: FSMContext, code: str, use
             
             await db.commit()
             
-        await msg.edit_text("✅ **Login Successful!**\n\nYour account is now connected.\nYou can now use the Main Bot to schedule messages.")
+        await msg.edit_text(
+            "❉ **LOGIN SUCCESSFUL** ❉\n"
+            "━━━━━━━━━━━━━━━━━━━━\n"
+            "◈ Account linked successfully.\n"
+            "◈ You can now close this bot.\n"
+            "━━━━━━━━━━━━━━━━━━━━"
+        )
         await client.disconnect()
         await remove_client(user_id)
         await state.clear()
 
     except PhoneCodeInvalidError:
-        await msg.edit_text("❌ Invalid code. Please try again:")
+        attempts = data.get("otp_attempts", 0) + 1
+        if attempts >= 3:
+            await msg.edit_text("❌ Too many wrong attempts. Session terminated. Please /start again.")
+            await client.disconnect()
+            await remove_client(user_id)
+            await state.clear()
+        else:
+            await state.update_data(otp_attempts=attempts)
+            await msg.edit_text(f"◊ **ERROR**: Invalid Code.\n⊹ Please try again. (Attempt {attempts}/3)")
     except SessionPasswordNeededError:
-        await msg.edit_text("⚠️ Two-Step Verification (Password) is enabled.\nPlease disable it temporarily.", reply_markup=None)
+        await msg.edit_text("◊ **ERROR**: 2FA Password required.\n⊹ Please disable it temporarily or check terminal console if possible.", reply_markup=None)
         await client.disconnect()
         await remove_client(user_id)
     except Exception as e:

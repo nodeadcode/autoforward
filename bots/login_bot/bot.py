@@ -7,7 +7,16 @@ from bots.login_bot.handlers import start, api, phone, otp
 from database.db import init_db
 
 async def main():
-    logging.basicConfig(level=logging.INFO)
+    # Setup Logging
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+        handlers=[
+            logging.FileHandler("login_bot.log"),
+            logging.StreamHandler()
+        ]
+    )
+    logger = logging.getLogger(__name__)
     
     # Initialize Database
     await init_db()
@@ -20,6 +29,11 @@ async def main():
     dp.include_router(api.router)
     dp.include_router(phone.router)
     dp.include_router(otp.router)
+
+    async def global_error_handler(event: types.ErrorEvent):
+        logging.error(f"Global Login Bot Error: {event.exception}", exc_info=True)
+
+    dp.errors.register(global_error_handler)
 
     await bot.delete_webhook(drop_pending_updates=True)
     await dp.start_polling(bot)

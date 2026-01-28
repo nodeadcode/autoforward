@@ -13,14 +13,21 @@ async def cmd_start(message: types.Message, state: FSMContext):
     
     async with AsyncSessionLocal() as db:
         user = await get_or_create_user(db, message.from_user.id, message.from_user.username)
-        # We could check if they have a session connected here, but that checks "other db" or same db
-        # If user.session is missing, we could prompt them to use Login Bot
+        from database.models import Session
+        from sqlalchemy.future import select
+        result = await db.execute(select(Session).where(Session.user_id == message.from_user.id))
+        session = result.scalar_one_or_none()
+        
+        status_text = "❉ ACCOUNT CONNECTED" if session and session.is_active else "◊ ACCOUNT NOT CONNECTED"
     
     await message.answer(
-        f"👋 Hello {message.from_user.first_name}!\n\n"
-        "Welcome to **Auto Message Scheduler**.\n"
-        "Control your automated messages, groups, and settings here.\n\n"
-        "👇 Choose an option from the menu:",
+        f"❉ **SPINIFY ADS** ❉\n"
+        f"━━━━━━━━━━━━━━━━━━━━\n"
+        f"Hello {message.from_user.first_name}!\n"
+        f"Welcome to the most powerful scheduler.\n\n"
+        f"◈ **Status**: {status_text}\n"
+        f"━━━━━━━━━━━━━━━━━━━━\n"
+        f"Please select an option:",
         reply_markup=main_menu_kb(message.from_user.id)
     )
 
@@ -28,7 +35,8 @@ async def cmd_start(message: types.Message, state: FSMContext):
 async def cb_home(callback: types.CallbackQuery, state: FSMContext):
     await state.clear()
     await callback.message.edit_text(
-        "👋 **Main Menu**\n\n"
+        "❉ **MAIN MENU** ❉\n"
+        "━━━━━━━━━━━━━━━━━━━━\n"
         "Control your automated messages, groups, and settings here.",
         reply_markup=main_menu_kb(callback.from_user.id)
     )

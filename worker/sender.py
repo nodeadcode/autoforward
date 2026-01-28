@@ -5,7 +5,7 @@ from telethon import TelegramClient
 from telethon.sessions import StringSession
 from telethon.errors import FloodWaitError
 from database.db import AsyncSessionLocal
-from database.models import User, Session, Settings
+from database.models import User, Session, Settings, MessageLog
 from sqlalchemy.future import select
 from sqlalchemy.orm import selectinload
 from config.settings import GROUP_GAP_SECONDS, MESSAGE_DELAY_SECONDS
@@ -31,8 +31,8 @@ async def process_user(user_id: int):
         if not user or not user.session:
             return
 
-        session_string = user.session.session_string
-        client = TelegramClient(StringSession(session_string), user.session.api_id, user.session.api_hash)
+        session_file = user.session.session_path
+        client = TelegramClient(session_file, user.session.api_id, user.session.api_hash)
         
         try:
             await client.connect()
@@ -42,14 +42,16 @@ async def process_user(user_id: int):
                 await db.commit()
                 return
 
-            # 1. Get latest Saved Message
-            saved_msgs = await client.get_messages("me", limit=1)
-            if not saved_msgs:
-                logger.info(f"User {user.id}: No saved messages found.")
+            # 1. Get latest Saved Message using utility
+            from utils.telegram_utils import get_latest_saved_message
+            saved_msg, error = await get_latest_saved_message(session_file, user.session.api_id, user.session.api_hash)
+            
+            if error:
+                logger.warning(f"User {user.id}: Could not fetch saved message: {error}")
                 await client.disconnect()
                 return
 
-            message_to_send = saved_msgs[0]
+            message_to_send = saved_msg
             
             # 2. Iterate groups
             groups = user.groups
@@ -62,21 +64,49 @@ async def process_user(user_id: int):
 
             sent_count = 0
             for group in groups:
-                try:
-                    if message_to_send.text:
-                        await client.send_message(group.group_id, message_to_send.text)
-                        logger.info(f"User {user.id}: Sent to {group.group_id}")
-                        sent_count += 1
-                    else:
-                        logger.warning(f"User {user.id}: Latest saved message has no text. Skipping.")
+                if not group.is_enabled:
+                    continue
                     
+                try:
+                    # Message Delay (200s) - Applying before each send as per requirement
+                    if sent_count > 0:
+                         await asyncio.sleep(MESSAGE_DELAY_SECONDS)
+
+                    await client.send_message(group.group_id, message_to_send)
+                    logger.info(f"User {user.id}: Sent to {group.group_id}")
+                    sent_count += 1
+                    
+                    # Log success
+                    log = MessageLog(user_id=user_id, group_id=group.group_id, status="success")
+                    db.add(log)
+                    await db.commit()
+                    
+                    # Group Gap (55s)
+                    await asyncio.sleep(GROUP_GAP_SECONDS)
+                    
+                    # Group Gap (55s)
                     await asyncio.sleep(GROUP_GAP_SECONDS)
 
                 except FloodWaitError as e:
                     logger.warning(f"User {user.id}: FloodWait {e.seconds}s. Sleeping.")
+                    # Log failure
+                    log = MessageLog(user_id=user_id, group_id=group.group_id, status="failed", error_info=f"FloodWait: {e.seconds}s")
+                    db.add(log)
+                    await db.commit()
                     await asyncio.sleep(e.seconds)
                 except Exception as e:
-                    logger.error(f"User {user.id}: Failed to send to {group.group_id}. Error: {e}")
+                    error_str = str(e)
+                    logger.error(f"User {user.id}: Failed to send to {group.group_id}. Error: {error_str}")
+                    # Log failure
+                    log = MessageLog(user_id=user_id, group_id=group.group_id, status="failed", error_info=error_str)
+                    db.add(log)
+                    await db.commit()
+                    
+                    if "permission" in error_str.lower() or "chat_write_forbidden" in error_str.lower():
+                        logger.warning(f"User {user.id}: Skipping group {group.group_id} due to permissions.")
+                    elif "too many requests" in error_str.lower():
+                         # Another way flood wait might manifest
+                         await asyncio.sleep(60)
             
             # Update last_run only if we attempted sending
             if sent_count > 0:

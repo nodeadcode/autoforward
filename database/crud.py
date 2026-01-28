@@ -21,6 +21,13 @@ async def get_user_settings(db: AsyncSession, user_id: int):
     result = await db.execute(select(Settings).where(Settings.user_id == user_id))
     return result.scalar_one_or_none()
 
+async def is_plan_active(db: AsyncSession, user_id: int) -> bool:
+    result = await db.execute(select(User).where(User.id == user_id))
+    user = result.scalar_one_or_none()
+    if user and user.plan_expiry:
+        return user.plan_expiry > datetime.utcnow()
+    return False
+
 async def add_group(db: AsyncSession, user_id: int, group_id: int, group_name: str):
     # Check limit? (Should be done in handler, but good to have safeguard)
     new_group = Group(user_id=user_id, group_id=group_id, group_name=group_name)

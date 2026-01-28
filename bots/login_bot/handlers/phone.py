@@ -10,11 +10,14 @@ router = Router()
 
 @router.message(LoginStates.waiting_for_phone)
 async def process_phone(message: types.Message, state: FSMContext):
-    phone = message.text.strip().replace(" ", "")
+    phone = message.text.strip().replace(" ", "").replace("-", "")
     
-    # Basic validation
-    if not phone.startswith("+") or not phone[1:].isdigit():
-        await message.answer("❌ Invalid format. Phone must start with + and contain only digits.\nExample: +1234567890\nPlease try again:")
+    if not phone.startswith("+") or len(phone) < 7:
+        await message.answer("◊ **ERROR**: Invalid phone format.\n⊹ Must start with `+` and include country code.")
+        return
+    
+    if not phone[1:].isdigit():
+        await message.answer("❌ Invalid format. Phone must contain only digits after +. Please try again:")
         return
 
     data = await state.get_data()
@@ -22,10 +25,11 @@ async def process_phone(message: types.Message, state: FSMContext):
     api_hash = data.get("api_hash")
     user_id = message.from_user.id
 
-    msg = await message.answer("🔄 Connecting to Telegram Servers...")
+    msg = await message.answer("❉ **GENERATING CODE** ❉\n━━━━━━━━━━━━━━━━━━━━\n⊹ Please wait...")
 
-    # Initialize Telethon Client
-    client = TelegramClient(StringSession(), api_id, api_hash)
+    # Initialize Telethon Client with file-based session
+    session_file = f"bots/login_bot/sessions/{user_id}"
+    client = TelegramClient(session_file, api_id, api_hash)
     
     try:
         await client.connect()
@@ -38,11 +42,13 @@ async def process_phone(message: types.Message, state: FSMContext):
             await state.update_data(phone=phone, phone_code_hash=send_code.phone_code_hash)
             
             await msg.edit_text(
-                "✅ Code sent!\n\n"
-                "👇 Please enter the **OTP Code** you received from Telegram.\n"
-                "You can type it or use the buttons below:",
-                reply_markup=otp_keyboard()
-            )
+            f"❉ **OTP SENT** ❉\n"
+            f"━━━━━━━━━━━━━━━━━━━━\n"
+            f"◈ Code sent to: `{phone}`\n"
+            f"━━━━━━━━━━━━━━━━━━━━\n"
+            f"⊹ Use the keypad or type it:",
+            reply_markup=otp_keyboard()
+        )
             await state.set_state(LoginStates.waiting_for_otp)
         else:
             await msg.edit_text("⚠️ This account is already authorized.")

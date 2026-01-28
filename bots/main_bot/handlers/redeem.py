@@ -16,8 +16,10 @@ class RedeemStates(StatesGroup):
 @router.callback_query(F.data == "redeem")
 async def cb_redeem(callback: types.CallbackQuery, state: FSMContext):
     await callback.message.edit_text(
-        "🎁 **Redeem Code**\n\n"
-        "Please enter your redemption code below:",
+        "❉ **REDEEM CODE** ❉\n"
+        "━━━━━━━━━━━━━━━━━━━━\n"
+        "⊹ Please type your code below:\n"
+        "━━━━━━━━━━━━━━━━━━━━",
         reply_markup=back_home_kb()
     )
     await state.set_state(RedeemStates.waiting_for_code)

@@ -16,15 +16,18 @@ async def cb_plan(callback: types.CallbackQuery):
         is_active = expiry > datetime.utcnow()
         days_left = (expiry - datetime.utcnow()).days
         
-        status_icon = "✅" if is_active else "❌"
+        status_sym = "❉" if is_active else "◊"
+        expiry_str = expiry.strftime('%Y-%m-%d %H:%M') if expiry else "N/A"
         
         text = (
-            f"💎 **My Plan Details**\n\n"
-            f"👤 **User ID**: `{user_id}`\n"
-            f"📅 **Expiry Date**: {expiry.strftime('%Y-%m-%d %H:%M')}\n"
-            f"{status_icon} **Status**: {'Active' if is_active else 'Expired'}\n"
-            f"⏳ **Days Remaining**: {days_left if is_active else 0} days\n\n"
-            "To extend your plan, receive a code from the admin and use the 'Redeem Code' button."
+            "❉ **MEMBERSHIP PLAN** ❉\n"
+            "━━━━━━━━━━━━━━━━━━━━\n"
+            f"◈ **User ID**: `{user_id}`\n"
+            f"◈ **Expiry**: `{expiry_str}`\n"
+            f"◈ **Status**: {status_sym} {'ACTIVE' if is_active else 'EXPIRED'}\n"
+            f"◈ **Remaining**: `{days_left if is_active else 0}` days\n"
+            "━━━━━━━━━━━━━━━━━━━━\n"
+            "⊹ To extend your plan, use a redeem code or contact support."
         )
         
         await callback.message.edit_text(text, reply_markup=back_home_kb())

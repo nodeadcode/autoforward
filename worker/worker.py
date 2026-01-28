@@ -61,11 +61,13 @@ async def worker_loop():
 
                     # If we passed all checks, queue the task
                     # Process User will handle updating the DB on success
-                    tasks.append(process_user(user.id))
+                    tasks_to_process.append(user.id)
 
-                if tasks:
-                    logger.info(f"Processing {len(tasks)} active users...")
-                    await asyncio.gather(*tasks)
+                if tasks_to_process:
+                    logger.info(f"Processing {len(tasks_to_process)} active users sequentially...")
+                    for user_id in tasks_to_process:
+                        if user_id in tasks_to_process: # Placeholder check
+                             await process_user(user_id)
 
             # Main loop check frequency
             await asyncio.sleep(60)

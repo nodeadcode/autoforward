@@ -13,45 +13,38 @@ async def cb_account(callback: types.CallbackQuery):
     user_id = callback.from_user.id
     async with AsyncSessionLocal() as db:
         # Get User and Session
-        await get_or_create_user(db, user_id) # Ensure user exists
+        await get_or_create_user(db, user_id)
         result = await db.execute(select(Session).where(Session.user_id == user_id))
         session = result.scalar_one_or_none()
         
-        is_connected = False
-        if session and session.is_active:
-            is_connected = True
-            status = "✅ Connected"
-            phone = session.phone_number
-            api_id = session.api_id
-        else:
-            status = "❌ Not Connected"
-            phone = "N/A"
-            api_id = "N/A"
+        is_connected = session and session.is_active
+        status_text = "❉ CONNECTED" if is_connected else "◊ NOT CONNECTED"
+        phone = f"`{session.phone_number}`" if is_connected else "`N/A`"
+        api_id = f"`{session.api_id}`" if is_connected else "`N/A`"
 
     text = (
-        f"👤 **Manage Account**\n\n"
-        f"**User ID**: `{user_id}`\n"
-        f"**Status**: {status}\n"
-        f"**Phone**: `{phone}`\n"
-        f"**API ID**: `{api_id}`\n\n"
+        "❉ **ACCOUNT MANAGEMENT** ❉\n"
+        "━━━━━━━━━━━━━━━━━━━━\n"
+        f"◈ **User ID**: `{user_id}`\n"
+        f"◈ **Status**: {status_text}\n"
+        f"◈ **Phone**: {phone}\n"
+        f"◈ **API ID**: {api_id}\n"
+        "━━━━━━━━━━━━━━━━━━━━\n"
     )
     
     if not is_connected:
-        text += "⚠️ You are not connected. Click the button below to login."
+        text += "◊ **WARNING**: You are not connected.\n⊹ Click below to link your account."
     else:
-        text += "To disconnect this account, click 'Remove Account' below."
+        text += "⊹ To disconnect, click 'Remove Account'."
 
     await callback.message.edit_text(text, reply_markup=account_kb(is_connected))
 
 @router.callback_query(F.data == "remove_account")
 async def cb_remove_account(callback: types.CallbackQuery):
     user_id = callback.from_user.id
-    
     async with AsyncSessionLocal() as db:
-        # Delete Session
         await db.execute(delete(Session).where(Session.user_id == user_id))
         await db.commit()
         
-    await callback.answer("✅ Account removed successfully.")
-    # Refresh view
+    await callback.answer("◈ Account removed successfully.")
     await cb_account(callback)

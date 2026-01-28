@@ -25,10 +25,13 @@ async def cb_settings(callback: types.CallbackQuery):
             settings = await get_user_settings(db, user_id)
 
         await callback.message.edit_text(
-            "⚙️ **Settings Menu**\n\n"
-            f"⏱ **Interval**: Every {settings.interval_minutes} minutes\n"
-            f"🌙 **Night Mode**: {'ON' if settings.night_mode_enabled else 'OFF'}\n"
-            f"🚀 **Scheduler**: {'RUNNING' if settings.active else 'PAUSED'}",
+            "❉ **SYSTEM SETTINGS** ❉\n"
+            "━━━━━━━━━━━━━━━━━━━━\n"
+            f"◈ **Interval**: `{settings.interval_minutes}` minutes\n"
+            f"◈ **Night Mode**: {'◈ ON' if settings.night_mode_enabled else '◊ OFF'}\n"
+            f"◈ **Scheduler**: {'◈ RUNNING' if settings.active else '◊ PAUSED'}\n"
+            "━━━━━━━━━━━━━━━━━━━━\n"
+            "⊹ Configure your automation behavior below:",
             reply_markup=settings_kb(settings.night_mode_enabled, settings.active)
         )
 
@@ -46,7 +49,23 @@ async def cb_toggle_night(callback: types.CallbackQuery):
 async def cb_toggle_active(callback: types.CallbackQuery):
     user_id = callback.from_user.id
     async with AsyncSessionLocal() as db:
+        from database.crud import is_plan_active
+        if not await is_plan_active(db, user_id):
+            await callback.answer("❌ Your plan has expired. Please redeem a code to continue.", show_alert=True)
+            return
+
+        from database.models import Session
+        from sqlalchemy.future import select
+        res = await db.execute(select(Session).where(Session.user_id == user_id))
+        session = res.scalar_one_or_none()
+
         settings = await get_user_settings(db, user_id)
+        
+        if not settings.active: # Trying to turn it ON
+            if not (session and session.is_active):
+                await callback.answer("❌ Cannot start scheduler without a connected account!", show_alert=True)
+                return
+        
         settings.active = not settings.active
         await db.commit()
         await cb_settings(callback)

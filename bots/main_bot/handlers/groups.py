@@ -20,24 +20,46 @@ async def cb_groups(callback: types.CallbackQuery):
         groups_list = await get_user_groups(db, user_id)
         
         await callback.message.edit_text(
-            f"👥 **Manage Groups ({len(groups_list)}/{MAX_GROUPS_PER_USER})**\n\n"
-            "Click on a group to DELETE it.\n"
-            "Click 'Add Group' to add a new one.",
+            f"❉ **MANAGE GROUPS** ❉\n"
+            f"━━━━━━━━━━━━━━━━━━━━\n"
+            f"◈ **Limit**: `{len(groups_list)}/{MAX_GROUPS_PER_USER}`\n"
+            f"━━━━━━━━━━━━━━━━━━━━\n"
+            f"◈ `◈` = Enabled | `◊` = Disabled\n"
+            f"⊹ Click a group name to toggle.\n"
+            f"⊹ Click `🗑` to remove.",
             reply_markup=groups_kb(groups_list)
         )
 
 @router.callback_query(F.data == "add_group")
 async def cb_add_group(callback: types.CallbackQuery, state: FSMContext):
     async with AsyncSessionLocal() as db:
+        from database.models import User
+        from sqlalchemy.future import select
+        from database.crud import is_plan_active
+        if not await is_plan_active(db, callback.from_user.id):
+            await callback.answer("❌ Your plan has expired. Please redeem a code to continue.", show_alert=True)
+            return
+
+        from database.models import Session
+        res = await db.execute(select(Session).where(Session.user_id == callback.from_user.id))
+        session = res.scalar_one_or_none()
+        
+        if not (session and session.is_active):
+            await callback.answer("❌ You must connect your Telegram account first!", show_alert=True)
+            return
+
         groups_list = await get_user_groups(db, callback.from_user.id)
         if len(groups_list) >= MAX_GROUPS_PER_USER:
             await callback.answer("❌ You have reached the maximum group limit.", show_alert=True)
             return
 
     await callback.message.edit_text(
-        "➕ **Add Group**\n\n"
-        "Please send the **Group ID** (e.g., -100123456789) OR **Group Username** (e.g., @mygroup).\n\n"
-        "Note: You (your user account) must be a member of this group.",
+        "❉ **ADD NEW GROUP** ❉\n"
+        "━━━━━━━━━━━━━━━━━━━━\n"
+        "⊹ Send **Group ID** (e.g. `-100...`)\n"
+        "⊹ OR **Group Username** (e.g. `@group`)\n"
+        "━━━━━━━━━━━━━━━━━━━━\n"
+        "◊ **Note**: You must be a member of the group.",
         reply_markup=back_home_kb()
     )
     await state.set_state(GroupStates.waiting_for_group_id)
@@ -87,8 +109,25 @@ async def process_group_id(message: types.Message, state: FSMContext):
     await message.answer(f"✅ Group **{group_name}** added!", reply_markup=back_home_kb())
     await state.clear()
 
+@router.callback_query(F.data.startswith("toggle_group_"))
+async def cb_toggle_group(callback: types.CallbackQuery):
+    group_db_id = int(callback.data.split("_")[-1]) # This is the primary key 'id' from Group table
+    
+    async with AsyncSessionLocal() as db:
+        result = await db.execute(select(Group).where(Group.id == group_db_id, Group.user_id == callback.from_user.id))
+        group = result.scalar_one_or_none()
+        if group:
+            group.is_enabled = not group.is_enabled
+            await db.commit()
+            await callback.answer(f"Group {'enabled' if group.is_enabled else 'disabled'}.")
+        else:
+            await callback.answer("❌ Group not found.")
+            
+    await cb_groups(callback) # Refresh list
+
 @router.callback_query(F.data.startswith("del_group_"))
 async def cb_del_group(callback: types.CallbackQuery):
+    # Keep delete functionality if they really want to remove it
     group_id_to_del = int(callback.data.split("_")[-1])
     
     async with AsyncSessionLocal() as db:
@@ -96,4 +135,4 @@ async def cb_del_group(callback: types.CallbackQuery):
         await db.commit()
     
     await callback.answer("🗑 Group removed.")
-    await cb_groups(callback) # Refresh list
+    await cb_groups(callback)

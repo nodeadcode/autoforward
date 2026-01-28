@@ -19,7 +19,7 @@ class User(Base):
 class Session(Base):
     __tablename__ = 'sessions'
     user_id = Column(BigInteger, ForeignKey('users.id'), primary_key=True)
-    session_string = Column(String, nullable=True) # Or path to file
+    session_path = Column(String, nullable=True) # Path to .session file
     phone_number = Column(String, nullable=True)
     api_id = Column(Integer, nullable=True)
     api_hash = Column(String, nullable=True)
@@ -34,6 +34,7 @@ class Group(Base):
     user_id = Column(BigInteger, ForeignKey('users.id'))
     group_id = Column(BigInteger, nullable=False)
     group_name = Column(String, nullable=True)
+    is_enabled = Column(Boolean, default=True)
     added_at = Column(DateTime, default=datetime.utcnow)
 
     user = relationship("User", back_populates="groups")
@@ -64,3 +65,4 @@ class MessageLog(Base):
     message_id = Column(Integer)
     sent_at = Column(DateTime, default=datetime.utcnow)
     status = Column(String) # success, failed
+    error_info = Column(String, nullable=True)

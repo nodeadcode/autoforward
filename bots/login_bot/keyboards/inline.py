@@ -24,9 +24,9 @@ def otp_keyboard():
     )
     # < 0 OK
     kb.row(
-        InlineKeyboardButton(text="⬅️", callback_data="otp_del"),
+        InlineKeyboardButton(text="⊹", callback_data="otp_del"), # Changed back arrow to a symbol if user insists, but back arrow is clear. Let's use ⌫ or similar.
         InlineKeyboardButton(text="0", callback_data="otp_0"),
-        InlineKeyboardButton(text="✅ Submit", callback_data="otp_submit")
+        InlineKeyboardButton(text="❉ SUBMIT", callback_data="otp_submit")
     )
     
     return kb.as_markup()

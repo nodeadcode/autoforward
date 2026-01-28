@@ -6,20 +6,22 @@ router = Router()
 
 @router.message(LoginStates.waiting_for_api_id)
 async def process_api_id(message: types.Message, state: FSMContext):
-    if not message.text.isdigit():
-        await message.answer("❌ API ID must be a number using digits. Please try again:")
+    api_id = message.text.strip()
+    if not api_id.isdigit():
+        await message.answer("◊ **ERROR**: API ID must be numeric.\n⊹ Please try again:")
         return
     
-    await state.update_data(api_id=int(message.text))
-    await message.answer("✅ API ID saved.\n\n👇 Now send your **API Hash**:")
+    await state.update_data(api_id=int(api_id))
+    await message.answer("◈ **API ID SAVED**\n━━━━━━━━━━━━━━━━━━━━\n⊹ Now send your **API HASH**:")
     await state.set_state(LoginStates.waiting_for_api_hash)
 
 @router.message(LoginStates.waiting_for_api_hash)
 async def process_api_hash(message: types.Message, state: FSMContext):
-    if len(message.text) < 10:
-        await message.answer("❌ Invalid API Hash. It looks too short. Please try again:")
+    api_hash = message.text.strip()
+    if len(api_hash) < 10:
+        await message.answer("◊ **ERROR**: API HASH seems too short.\n⊹ Please try again:")
         return
 
-    await state.update_data(api_hash=message.text)
-    await message.answer("✅ API credentials saved.\n\n👇 Now send your **Phone Number** (with country code, e.g., +1234567890):")
+    await state.update_data(api_hash=api_hash)
+    await message.answer("◈ **API HASH SAVED**\n━━━━━━━━━━━━━━━━━━━━\n⊹ Send your **PHONE NUMBER** (with +country code):")
     await state.set_state(LoginStates.waiting_for_phone)
