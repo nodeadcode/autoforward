@@ -11,9 +11,6 @@ from config.settings import NIGHT_MODE_START, NIGHT_MODE_END
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 logger = logging.getLogger("Worker")
 
-# Cache to track last run times: {user_id: datetime}
-last_run_times = {}
-
 def is_night_time():
     now = datetime.now()
     # Simple check for 00:00 to 06:00
@@ -55,27 +52,22 @@ async def worker_loop():
                     if user.settings.night_mode_enabled and is_night_time():
                         continue
 
-                    # Interval Check
-                    last_run = last_run_times.get(user.id)
+                    # Interval Check (DB Based Persistence)
+                    last_run = user.settings.last_run
                     interval = timedelta(minutes=user.settings.interval_minutes)
                     
                     if last_run and (current_time - last_run) < interval:
                         continue
 
                     # If we passed all checks, queue the task
-                    last_run_times[user.id] = current_time
-                    tasks.append(process_user(user, user.session.session_string))
+                    # Process User will handle updating the DB on success
+                    tasks.append(process_user(user.id))
 
                 if tasks:
                     logger.info(f"Processing {len(tasks)} active users...")
-                    # Run concurrently? 
-                    # "Independent users". Yes, safe to run concurrently.
-                    # Each process_user creates its own Client.
                     await asyncio.gather(*tasks)
 
             # Main loop check frequency
-            # We don't want to hammer the DB, but need to check often enough for precise intervals.
-            # 60s sleep is fine.
             await asyncio.sleep(60)
 
         except Exception as e:

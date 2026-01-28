@@ -44,6 +44,7 @@ class Settings(Base):
     interval_minutes = Column(Integer, default=25)
     night_mode_enabled = Column(Boolean, default=True)
     active = Column(Boolean, default=True) # Master switch for user
+    last_run = Column(DateTime, nullable=True)
 
     user = relationship("User", back_populates="settings")
 
