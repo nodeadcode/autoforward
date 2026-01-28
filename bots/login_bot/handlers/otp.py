@@ -1,0 +1,124 @@
+from aiogram import Router, types, F
+from aiogram.fsm.context import FSMContext
+from telethon.sessions import StringSession
+from telethon.errors import SessionPasswordNeededError, PhoneCodeInvalidError
+from bots.login_bot.handlers.start import LoginStates
+from bots.login_bot.session_manager import get_client, remove_client
+from database.db import AsyncSessionLocal
+from database.crud import get_or_create_user
+from database.models import Session
+from sqlalchemy.future import select
+from bots.login_bot.keyboards.inline import otp_keyboard
+
+router = Router()
+
+async def finish_login(message: types.Message, state: FSMContext, code: str, user_id: int):
+    data = await state.get_data()
+    phone = data.get("phone")
+    phone_code_hash = data.get("phone_code_hash")
+    api_id = data.get("api_id")
+    api_hash = data.get("api_hash")
+    
+    client = get_client(user_id)
+    if not client:
+        await message.answer("❌ Session expired. Please /start again.")
+        await state.clear()
+        return
+
+    msg = await message.answer("🔄 Verifying code...") if isinstance(message, types.Message) else await message.message.answer("🔄 Verifying code...")
+    # If using callback, message is CallbackQuery, but we passed message object or we use callback.message
+    # Standardize:
+    # If caller passed a Message, answer it.
+    
+    try:
+        await client.sign_in(phone=phone, code=code, phone_code_hash=phone_code_hash)
+        
+        string_session = client.session.save()
+        
+        async with AsyncSessionLocal() as db:
+            await get_or_create_user(db, user_id, message.from_user.username)
+            
+            result = await db.execute(select(Session).where(Session.user_id == user_id))
+            existing_session = result.scalar_one_or_none()
+            
+            if existing_session:
+                existing_session.session_string = string_session
+                existing_session.phone_number = phone
+                existing_session.api_id = api_id
+                existing_session.api_hash = api_hash
+                existing_session.is_active = True
+            else:
+                new_session = Session(
+                    user_id=user_id, 
+                    session_string=string_session, 
+                    phone_number=phone, 
+                    api_id=api_id,
+                    api_hash=api_hash,
+                    is_active=True
+                )
+                db.add(new_session)
+            
+            await db.commit()
+            
+        await msg.edit_text("✅ **Login Successful!**\n\nYour account is now connected.\nYou can now use the Main Bot to schedule messages.")
+        await client.disconnect()
+        await remove_client(user_id)
+        await state.clear()
+
+    except PhoneCodeInvalidError:
+        await msg.edit_text("❌ Invalid code. Please try again:")
+    except SessionPasswordNeededError:
+        await msg.edit_text("⚠️ Two-Step Verification (Password) is enabled.\nPlease disable it temporarily.", reply_markup=None)
+        await client.disconnect()
+        await remove_client(user_id)
+    except Exception as e:
+        await msg.edit_text(f"❌ Error: {str(e)}")
+        await client.disconnect()
+        await remove_client(user_id)
+        await state.clear()
+
+@router.message(LoginStates.waiting_for_otp)
+async def process_otp_message(message: types.Message, state: FSMContext):
+    code = message.text.replace(" ", "")
+    if not code.isdigit():
+        await message.answer("❌ Code must be a number.", reply_markup=otp_keyboard())
+        return
+    await finish_login(message, state, code, message.from_user.id)
+
+@router.callback_query(F.data.startswith("otp_"))
+async def process_otp_callback(callback: types.CallbackQuery, state: FSMContext):
+    action = callback.data.split("_")[1]
+    data = await state.get_data()
+    current_code = data.get("otp_input", "")
+
+    if action == "submit":
+        if not current_code:
+            await callback.answer("❌ Enter code first!")
+            return
+        await callback.message.delete()
+        await finish_login(callback, state, current_code, callback.from_user.id)
+        return
+
+    if action == "del":
+        current_code = current_code[:-1]
+    else:
+        # Number
+        if len(current_code) < 6: # Max OTP length usually 5 or 6
+            current_code += action
+    
+    await state.update_data(otp_input=current_code)
+    
+    # Update message text
+    display_code = " ".join(list(current_code)) if current_code else "..."
+    text = (
+        "✅ Code sent!\n\n"
+        "👇 Please enter the **OTP Code** you received from Telegram.\n"
+        f"**Entered Code:** `{display_code}`"
+    )
+    
+    try:
+        await callback.message.edit_text(text, reply_markup=otp_keyboard())
+    except Exception:
+        pass # Ignore if content didn't change
+    
+    await callback.answer()
