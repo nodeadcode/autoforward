@@ -39,6 +39,18 @@ def groups_kb(groups: list):
     kb.row(InlineKeyboardButton(text="🔙 Back", callback_data="home"))
     return kb.as_markup()
 
+def account_kb(is_connected: bool):
+    kb = InlineKeyboardBuilder()
+    if is_connected:
+        kb.row(InlineKeyboardButton(text="🚮 Remove Account (Logout)", callback_data="remove_account"))
+    else:
+        # Replace 'SpinifyLoginBot' with your actual bot username if known, or config it.
+        # Ideally passed from config, but hardcoding for now based on context.
+        kb.row(InlineKeyboardButton(text="🔗 Login via Bot", url="https://t.me/SpinifyLoginBot"))
+        
+    kb.row(InlineKeyboardButton(text="🔙 Back", callback_data="home"))
+    return kb.as_markup()
+
 def back_home_kb():
     kb = InlineKeyboardBuilder()
     kb.row(InlineKeyboardButton(text="🔙 Back to Menu", callback_data="home"))
