@@ -9,6 +9,7 @@ from database.models import User, Session, Settings, MessageLog
 from sqlalchemy.future import select
 from sqlalchemy.orm import selectinload
 from config.settings import GROUP_GAP_SECONDS, MESSAGE_DELAY_SECONDS
+from utils.telegram_utils import get_latest_saved_message
 
 logger = logging.getLogger(__name__)
 
@@ -43,7 +44,6 @@ async def process_user(user_id: int):
                 return
 
             # 1. Get latest Saved Message using utility
-            from utils.telegram_utils import get_latest_saved_message
             saved_msg, error = await get_latest_saved_message(session_file, user.session.api_id, user.session.api_hash)
             
             if error:
@@ -80,9 +80,6 @@ async def process_user(user_id: int):
                     log = MessageLog(user_id=user_id, group_id=group.group_id, status="success")
                     db.add(log)
                     await db.commit()
-                    
-                    # Group Gap (55s)
-                    await asyncio.sleep(GROUP_GAP_SECONDS)
                     
                     # Group Gap (55s)
                     await asyncio.sleep(GROUP_GAP_SECONDS)

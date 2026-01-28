@@ -1,6 +1,5 @@
 from aiogram import Router, types, F
 from aiogram.fsm.context import FSMContext
-from telethon.sessions import StringSession
 from telethon.errors import SessionPasswordNeededError, PhoneCodeInvalidError
 from bots.login_bot.handlers.start import LoginStates
 from bots.login_bot.session_manager import get_client, remove_client
@@ -33,7 +32,7 @@ async def finish_login(message: types.Message, state: FSMContext, code: str, use
     try:
         await client.sign_in(phone=phone, code=code, phone_code_hash=phone_code_hash)
         
-        session_file = f"bots/login_bot/sessions/{user_id}.session"
+        session_file = f"bots/login_bot/sessions/{user_id}"
         
         async with AsyncSessionLocal() as db:
             await get_or_create_user(db, user_id, message.from_user.username)
@@ -125,9 +124,11 @@ async def process_otp_callback(callback: types.CallbackQuery, state: FSMContext)
     # Update message text
     display_code = " ".join(list(current_code)) if current_code else "..."
     text = (
-        "✅ Code sent!\n\n"
-        "👇 Please enter the **OTP Code** you received from Telegram.\n"
-        f"**Entered Code:** `{display_code}`"
+        f"❉ **OTP ENTRY** ❉\n"
+        f"━━━━━━━━━━━━━━━━━━━━\n"
+        f"◈ **Entered**: `{display_code}`\n"
+        f"━━━━━━━━━━━━━━━━━━━━\n"
+        f"⊹ Use the keypad or type it:"
     )
     
     try:

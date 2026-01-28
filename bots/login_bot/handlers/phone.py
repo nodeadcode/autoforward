@@ -1,7 +1,6 @@
 from aiogram import Router, types
 from aiogram.fsm.context import FSMContext
 from telethon import TelegramClient
-from telethon.sessions import StringSession
 from bots.login_bot.handlers.start import LoginStates
 from bots.login_bot.keyboards.inline import otp_keyboard
 from bots.login_bot.session_manager import add_client, remove_client
