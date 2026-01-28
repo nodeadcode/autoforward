@@ -2,59 +2,65 @@
 
 A powerful multi-user Telegram automation system that allows users to schedule messages from their "Saved Messages" to their groups automatically.
 
-## Components
+## 🚀 Features
 
-1.  **Main Bot**: User dashboard for managing settings, groups, and plans.
-2.  **Login Bot**: Securely logs in users to Telegram to act on their behalf.
-3.  **Worker**: Background process that executes the message sending schedules.
+-   **User-Specific Automation**: Each user connects their **Own Telegram Account** using their unique API ID/Hash.
+-   **Security**: No shared sessions or API keys. Your data is isolated.
+-   **Auto-Sending**: Reads the latest message from your "Saved Messages" and sends it to your configured groups.
+-   **Intervals**: Set custom intervals (min 25 mins).
+-   **Night Mode**: Automatically pauses between 12 AM - 6 AM to simulate human behavior.
+-   **Plans**: 7-day free trial on signup. Extend via Redeem Codes.
+-   **Safety**: FloodWait handling, Sequential sending, and Smart delays (55s gap).
 
-## Installation & Deployment
+## 🛠 Installation & Deployment
 
 ### 1. Prerequisites
-- Python 3.9+
-- VPS with at least 2GB RAM
-- Telegram API Credentials (for the implementation, using a main set of keys for the client login helper if needed, but users provide their own).
+-   Python 3.9+
+-   VPS with at least 2GB RAM
 
 ### 2. Setup
 1.  Clone the repository.
+    ```bash
+    git clone https://github.com/nodeadcode/autoforward.git
+    cd autoforward/auto_message_scheduler
+    ```
 2.  Install dependencies:
     ```bash
     pip install -r requirements.txt
     ```
 3.  Configure `config/secrets.env`:
     ```env
-    BOT_TOKEN_MAIN=123456:ABC-DEF...   # From @BotFather
-    BOT_TOKEN_LOGIN=123456:GHI-JKL...  # From @BotFather (Separate bot)
-    OWNER_ID=123456789                # Your Telegram ID
-    API_ID=12345                      # Your App ID (my.telegram.org)
-    API_HASH=abcdef...                # Your App Hash
+    BOT_TOKEN_MAIN=123456:ABC-DEF...   # From @BotFather (Main Bot)
+    BOT_TOKEN_LOGIN=123456:GHI-JKL...  # From @BotFather (Login Bot)
+    OWNER_ID=123456789                # Your Telegram ID (For Admin Commands)
     DATABASE_URL=sqlite+aiosqlite:///auto_message_scheduler.db
+    # API_ID and API_HASH are NOT needed here. Users provide them via the Login Bot.
     ```
 
 ### 3. Running the System
 You need to run three separate processes. Use `screen`, `tmux`, or `systemd`.
 
-**Process 1: Main Bot**
+**Process 1: Main Bot** (User Dashboard)
 ```bash
 python -m bots.main_bot.bot
 ```
 
-**Process 2: Login Bot**
+**Process 2: Login Bot** (Authentication)
 ```bash
 python -m bots.login_bot.bot
 ```
 
-**Process 3: Worker**
+**Process 3: Worker** (Automation Engine)
 ```bash
 python -m worker.worker
 ```
 
-## Features
-- **Auto-Sending**: Reads the latest message from your "Saved Messages" and sends it to your configured groups.
-- **Intervals**: Set custom intervals (min 25 mins).
-- **Night Mode**: Automatically pauses between 12 AM - 6 AM.
-- **Plans**: Free trial (7 days) and redeem code system for paid codes.
-- **Safety**: FloodWait handling and sequential sending to prevent bans.
+## 📚 User Guide
 
-## Admin Commands
-- `/gencode <days>`: Generate a redeem code (Owner only).
+1.  **Start Main Bot**: Check your status and get a plan.
+2.  **Login**: Use the Login Bot to connect your Telegram account. You will need your **API ID** and **API Hash** from [my.telegram.org](https://my.telegram.org).
+3.  **Add Groups**: In the Main Bot, add the groups you want to send messages to.
+4.  **Schedule**: Post a message in your **Saved Messages**, and the bot will pick it up and forward it to your groups based on your interval.
+
+## 👑 Admin Commands
+-   `/gencode <days>`: Generate a redeem code (Owner only).
