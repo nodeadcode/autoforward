@@ -3,7 +3,7 @@ import logging
 from aiogram import Bot, Dispatcher
 from aiogram.fsm.storage.memory import MemoryStorage
 from config.settings import BOT_TOKEN_MAIN
-from bots.main_bot.handlers import start, menu, settings, groups, plans, redeem
+from bots.main_bot.handlers import start, menu, settings, groups, plans, redeem, account
 from database.db import init_db
 
 async def main():
@@ -12,7 +12,10 @@ async def main():
     # Initialize Database (if strictly running this file)
     await init_db()
 
-    bot = Bot(token=BOT_TOKEN_MAIN)
+from aiogram.client.default import DefaultBotProperties
+from aiogram.enums import ParseMode
+
+    bot = Bot(token=BOT_TOKEN_MAIN, default=DefaultBotProperties(parse_mode=ParseMode.MARKDOWN))
     dp = Dispatcher(storage=MemoryStorage())
 
     # Include routers
@@ -22,6 +25,7 @@ async def main():
     dp.include_router(groups.router)
     dp.include_router(plans.router)
     dp.include_router(redeem.router)
+    dp.include_router(account.router)
 
     await bot.delete_webhook(drop_pending_updates=True)
     await dp.start_polling(bot)

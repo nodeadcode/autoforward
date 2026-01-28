@@ -8,6 +8,7 @@ def main_menu_kb(user_id):
         InlineKeyboardButton(text="👥 Manage Groups", callback_data="groups"),
         InlineKeyboardButton(text="⚙️ Settings", callback_data="settings")
     )
+    kb.row(InlineKeyboardButton(text="👤 Manage Account", callback_data="account"))
     kb.row(
         InlineKeyboardButton(text="💎 My Plan", callback_data="plan"),
         InlineKeyboardButton(text="🎁 Redeem Code", callback_data="redeem")

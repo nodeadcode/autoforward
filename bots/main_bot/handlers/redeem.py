@@ -47,6 +47,7 @@ async def process_code(message: types.Message, state: FSMContext):
 @router.message(Command("gencode"))
 async def cmd_gencode(message: types.Message):
     if message.from_user.id != OWNER_ID:
+        await message.answer(f"❌ **Access Denied**\n\nYou are not the owner. (Your ID: `{message.from_user.id}`)\nPlease check `OWNER_ID` in `secrets.env`.")
         return
     
     args = message.text.split()
