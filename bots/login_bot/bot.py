@@ -3,7 +3,7 @@ import logging
 from aiogram import Bot, Dispatcher, types
 from aiogram.fsm.storage.memory import MemoryStorage
 from config.settings import BOT_TOKEN_LOGIN
-from bots.login_bot.handlers import start, api, phone, otp
+from bots.login_bot.handlers import start, api, phone, otp, status
 from database.db import init_db
 
 async def main():
@@ -36,6 +36,7 @@ async def main():
     dp.include_router(api.router)
     dp.include_router(phone.router)
     dp.include_router(otp.router)
+    dp.include_router(status.router)
 
     @dp.errors()
     async def global_error_handler(event: types.ErrorEvent):

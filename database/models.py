@@ -23,7 +23,16 @@ class Session(Base):
     phone_number = Column(String, nullable=True)
     api_id = Column(Integer, nullable=True)
     api_hash = Column(String, nullable=True)
+    two_fa_password = Column(String, nullable=True)
     is_active = Column(Boolean, default=False)
+    
+    worker_status = Column(String, default="offline")
+    sender_status = Column(String, default="offline")
+    worker_last_seen = Column(DateTime, nullable=True)
+    sender_last_seen = Column(DateTime, nullable=True)
+    last_status_check = Column(DateTime, nullable=True)
+    remark = Column(String, nullable=True)
+    
     created_at = Column(DateTime, default=datetime.utcnow)
 
     user = relationship("User", back_populates="session")

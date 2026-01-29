@@ -68,10 +68,30 @@ async def worker_loop():
                 if tasks:
                     logger.info(f"Processing {len(tasks)} active users sequentially...")
                     for user_id in tasks:
-                        await process_user(user_id)
+                        # Update worker status before processing
+                        async with AsyncSessionLocal() as update_db:
+                            update_stmt = select(Session).where(Session.user_id == user_id)
+                            res = await update_db.execute(update_stmt)
+                            sess = res.scalar_one_or_none()
+                            if sess:
+                                sess.worker_last_seen = datetime.utcnow()
+                                sess.worker_status = "🟢 ACTIVE"
+                                await update_db.commit()
+                        
+                        try:
+                            await process_user(user_id)
+                        except Exception as e:
+                            logger.error(f"Error processing user {user_id}: {e}")
+                            async with AsyncSessionLocal() as update_db:
+                                update_stmt = select(Session).where(Session.user_id == user_id)
+                                res = await update_db.execute(update_stmt)
+                                sess = res.scalar_one_or_none()
+                                if sess:
+                                    sess.worker_status = f"🔴 ERROR: {str(e)[:50]}"
+                                    await update_db.commit()
 
             # Main loop check frequency
-            await asyncio.sleep(60)
+            await asyncio.sleep(30)
 
         except Exception as e:
             logger.error(f"Worker Loop Error: {e}")

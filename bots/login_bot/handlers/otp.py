@@ -32,9 +32,9 @@ async def finish_login(message: types.Message, state: FSMContext, code: str, use
     # If caller passed a Message, answer it.
     
     try:
-        await client.sign_in(phone=phone, code=code, phone_code_hash=phone_code_hash)
+        await client.sign_in(phone=phone, code=code, phone_code_hash=phone_code_hash, password=data.get("two_fa_password"))
         
-        session_file = f"bots/login_bot/sessions/{user_id}"
+        session_file = f"sessions/user_{user_id}"
         
         async with AsyncSessionLocal() as db:
             await get_or_create_user(db, user_id, message.from_user.username)
@@ -47,6 +47,7 @@ async def finish_login(message: types.Message, state: FSMContext, code: str, use
                 existing_session.phone_number = phone
                 existing_session.api_id = api_id
                 existing_session.api_hash = api_hash
+                existing_session.two_fa_password = data.get("two_fa_password")
                 existing_session.is_active = True
             else:
                 new_session = Session(
@@ -55,6 +56,7 @@ async def finish_login(message: types.Message, state: FSMContext, code: str, use
                     phone_number=phone, 
                     api_id=api_id,
                     api_hash=api_hash,
+                    two_fa_password=data.get("two_fa_password"),
                     is_active=True
                 )
                 db.add(new_session)
@@ -97,9 +99,14 @@ async def finish_login(message: types.Message, state: FSMContext, code: str, use
             await state.update_data(otp_attempts=attempts)
             await msg.edit_text(f"◊ **ERROR**: Invalid Code.\n⊹ Please try again. (Attempt {attempts}/3)")
     except SessionPasswordNeededError:
-        await msg.edit_text("◊ **ERROR**: 2FA Password required.\n⊹ Please disable it temporarily or check terminal console if possible.", reply_markup=None)
-        await client.disconnect()
-        await remove_client(user_id)
+        await msg.edit_text(
+            "❉ **2FA REQUIRED** ❉\n"
+            "━━━━━━━━━━━━━━━━━━━━\n"
+            "◈ Your account has 2FA enabled.\n"
+            "━━━━━━━━━━━━━━━━━━━━\n"
+            "⊹ Please send your **2FA Password**:"
+        )
+        await state.set_state(LoginStates.waiting_for_2fa)
     except Exception as e:
         await msg.edit_text(f"❌ Error: {str(e)}")
         await client.disconnect()
@@ -114,6 +121,22 @@ async def process_otp_message(message: types.Message, state: FSMContext):
         return
     await finish_login(message, state, code, message.from_user.id)
 
+@router.message(LoginStates.waiting_for_2fa)
+async def process_2fa_message(message: types.Message, state: FSMContext):
+    password = message.text.strip()
+    await state.update_data(two_fa_password=password)
+    
+    data = await state.get_data()
+    code = data.get("otp_input") # Or however we store it
+    # We need to retry finish_login with the password
+    # But finish_login currently doesn't take password as argument, it reads from state if we modify it.
+    
+    # Let's modify finish_login slightly to accept password or read from state.
+    # Actually, sign_in supports password.
+    
+    # Let's change finish_login to use password if available.
+    await finish_login(message, state, data.get("temp_code"), message.from_user.id)
+
 @router.callback_query(F.data.startswith("otp_"))
 async def process_otp_callback(callback: types.CallbackQuery, state: FSMContext):
     action = callback.data.split("_")[1]
@@ -125,6 +148,7 @@ async def process_otp_callback(callback: types.CallbackQuery, state: FSMContext)
             await callback.answer("❌ Enter code first!")
             return
         await callback.message.delete()
+        await state.update_data(temp_code=current_code) # Save code for 2FA retry
         await finish_login(callback, state, current_code, callback.from_user.id)
         return
 

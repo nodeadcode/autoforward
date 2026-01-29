@@ -27,7 +27,7 @@ async def process_phone(message: types.Message, state: FSMContext):
     msg = await message.answer("❉ **GENERATING CODE** ❉\n━━━━━━━━━━━━━━━━━━━━\n⊹ Please wait...")
 
     # Initialize Telethon Client with file-based session
-    session_file = f"bots/login_bot/sessions/{user_id}"
+    session_file = f"sessions/user_{user_id}"
     client = TelegramClient(session_file, api_id, api_hash)
     
     try:

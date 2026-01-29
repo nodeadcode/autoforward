@@ -10,6 +10,7 @@ class LoginStates(StatesGroup):
     waiting_for_api_hash = State()
     waiting_for_phone = State()
     waiting_for_otp = State()
+    waiting_for_2fa = State()
 
 @router.message(Command("start"))
 async def cmd_start(message: types.Message, state: FSMContext):
